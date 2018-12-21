@@ -27,7 +27,7 @@ namespace Cauldron
 
 			var folders = config.Get<string[]>("static");
 
-			server.AddRoute("/content/+", (req, res) => new StaticContentMiddleware("/content", "/static/").OnResponse(req, res));
+			server.AddRoute("/content/+", (req, res) => new StaticContentMiddleware("/content", "/static/").OnResponse(req.Request, res));
 			
 			server.Start();
 			Console.WriteLine("Press any key to shutdown");

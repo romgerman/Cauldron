@@ -9,11 +9,19 @@ namespace Cauldron
 {
 	class Server
 	{
-		public delegate void RouteCallback(HttpListenerRequest request, HttpListenerResponse response);
+		public delegate void RouteCallback(ClientRequest request, HttpListenerResponse response);
 
 		struct Route
 		{
-			public string[] UrlParts;
+            public string Url
+            {
+                get
+                {
+                    return string.Join("/", this.UrlParts);
+                }
+            }
+
+            public string[] UrlParts;
 			public bool Wildcard;
 			public RouteCallback Callback;
 		}
@@ -47,7 +55,11 @@ namespace Cauldron
 							var route = CheckUrl(ctx);
 
 							if (route != null)
-								route.Value.Callback(ctx.Request, ctx.Response);
+								route.Value.Callback(new ClientRequest()
+                                {
+                                    Request = ctx.Request,
+                                    RelativePath = ctx.Request.Url.AbsolutePath.Replace(route.Value.Url.Remove(route.Value.Url.IndexOf('+'), 1), "")
+                                }, ctx.Response);
 							else
 								ctx.Response.StatusCode = 404;
 						}
