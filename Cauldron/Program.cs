@@ -5,36 +5,61 @@ using System.Text;
 using System.Threading.Tasks;
 using System.IO;
 
+using Json = Newtonsoft.Json.Linq;
+
 namespace Cauldron
 {
-    class Program
-    {
-        static void Main(string[] args)
-        {
-			var config = new Config("./config.json", new Newtonsoft.Json.Linq.JObject()
+	class Program
+	{
+		static string defaultJson = @"
 			{
-				{ "port", 11000 },
-				{ "static", new Newtonsoft.Json.Linq.JArray() { "./" } }
-			});
+				""modules"": [ ""static"" ],
+				""hosts"": {
+					""port"": 11000,
+					""paths"": {
+						""/"": {
+							""echo"": ""Hello world!""
+						},
+						""/files/+"": {
+							""modules"": {
+								""static"": {
+									""paths"": [ ""content"" ]
+								}
+							}
+						}
+					}
+				}
+			}
+		";
 
-			var server = new Server(config.Get<int>("port"));
+		static void Main(string[] args)
+		{
+			//var config = new Config("./config.json", Json.JObject.Parse(defaultJson));
 
-			server.AddRoute("/", (req, res) =>
+			var server = new Server(11000);
+
+			server.Router.AddRoute("/", (req, res, route) =>
 			{
 				res.StatusCode = 200;
 				res.Send("Hello damn girl", Encoding.UTF8);
 			});
 
-			var folders = config.Get<string[]>("static");
+			server.Router.AddRoute("/test/+", (req, res, r) =>
+			{
+				res.StatusCode = 200;
+				res.Send($"Route path: {r.Path}\n", Encoding.UTF8);
+				res.Send($"Absolute path: {req.Url.AbsolutePath}\n", Encoding.UTF8);
+				res.Send($"Relative path: {r.RelativePath(req.Url.AbsolutePath)}", Encoding.UTF8);
+			});
 
-			server.AddRoute("/content/+", (req, res) => new StaticContentMiddleware("/content", "/static/").OnResponse(req.Request, res));
+			server.Router.AddRoute("/files/+", (req, res, r) => new StaticContentMiddleware("/static/").OnResponse(req, res, r));
 			
 			server.Start();
 			Console.WriteLine("Press any key to shutdown");
 			Console.ReadLine();
 			server.Stop();
-        }
+		}
 
-    }
+	}
 	
 }

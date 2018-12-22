@@ -7,26 +7,20 @@ namespace Cauldron
 {
 	class StaticContentMiddleware : Middleware
 	{
-		string url;
-		string path;
+		string _path;
 
-		public StaticContentMiddleware(string url, string path)
+		public StaticContentMiddleware(string path)
 		{
-			this.url = url;
-			this.path = path;
+			this._path = path;
 		}
 
-		public override void OnResponse(HttpListenerRequest req, HttpListenerResponse res)
+		public override void OnResponse(HttpListenerRequest req, HttpListenerResponse res, Router.Route route)
 		{
-			base.OnResponse(req, res);
+			base.OnResponse(req, res, route);
+			
+			var path = AppDomain.CurrentDomain.BaseDirectory + _path + route.RelativePath(req.Url.AbsolutePath).Replace('/', Path.DirectorySeparatorChar);
 
-			var start = req.Url.AbsolutePath.Replace(url, "").Replace('/', Path.DirectorySeparatorChar);
-			var path = AppDomain.CurrentDomain.BaseDirectory + start;
-
-			if (!File.Exists(path))
-			{
-				res.StatusCode = 404;
-			}
+			Console.WriteLine(path);
 
 			var attrs = File.GetAttributes(path);
 
@@ -52,10 +46,25 @@ namespace Cauldron
 					}
 				}
 			}
+			else if (attrs.HasFlag(FileAttributes.Directory))
+			{
+				res.StatusCode = 200;
+
+				Console.WriteLine("hey");
+				string[] files = Directory.GetFiles(path);
+				
+				foreach(var file in files)
+				{
+					res.Send($"{Path.GetFileName(file)}\n", Encoding.UTF8);
+				}
+			}
 			else
 			{
-				res.StatusCode = 404;
-				res.Send("not supported", Encoding.UTF8);
+				if (!File.Exists(path))
+				{
+					res.StatusCode = 404;
+					return;
+				}
 			}
 		}
 	}

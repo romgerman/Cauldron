@@ -5,9 +5,8 @@ namespace Cauldron
 {
 	class Middleware
 	{
-		public virtual void OnResponse(HttpListenerRequest req, HttpListenerResponse res)
+		public virtual void OnResponse(HttpListenerRequest req, HttpListenerResponse res, Router.Route route)
 		{
-
 		}
 	}
 }
