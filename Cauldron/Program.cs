@@ -52,7 +52,7 @@ namespace Cauldron
 				res.Send($"Relative path: {r.RelativePath(req.Url.AbsolutePath)}", Encoding.UTF8);
 			});
 
-			server.Router.AddRoute("/files/+", (req, res, r) => new StaticContentMiddleware("/static/").OnResponse(req, res, r));
+			server.Router.AddRoute("/files/+", (req, res, r) => new StaticContentModule("/static/").OnResponse(req, res, r));
 			
 			server.Start();
 			Console.WriteLine("Press any key to shutdown");

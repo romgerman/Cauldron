@@ -3,7 +3,7 @@ using System.Net;
 
 namespace Cauldron
 {
-	class Middleware
+	class Module
 	{
 		public virtual void OnResponse(HttpListenerRequest req, HttpListenerResponse res, Router.Route route)
 		{

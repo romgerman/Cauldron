@@ -5,11 +5,11 @@ using System.Text;
 
 namespace Cauldron
 {
-	class StaticContentMiddleware : Middleware
+	class StaticContentModule : Module
 	{
 		string _path;
 
-		public StaticContentMiddleware(string path)
+		public StaticContentModule(string path)
 		{
 			this._path = path;
 		}
