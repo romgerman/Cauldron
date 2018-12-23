@@ -8,17 +8,19 @@ namespace Cauldron
 	class StaticContentModule : Module
 	{
 		string _path;
+		bool _relative;
 
 		public StaticContentModule(string path)
 		{
 			this._path = path;
+			this._relative = !Path.IsPathRooted(path);
 		}
 
 		public override void OnResponse(HttpListenerRequest req, HttpListenerResponse res, Router.Route route)
 		{
 			base.OnResponse(req, res, route);
 			
-			var path = AppDomain.CurrentDomain.BaseDirectory + _path + route.RelativePath(req.Url.AbsolutePath).Replace('/', Path.DirectorySeparatorChar);
+			var path = (_relative ? AppDomain.CurrentDomain.BaseDirectory : "") + _path + route.RelativePath(req.Url.AbsolutePath).Replace('/', Path.DirectorySeparatorChar);
 
 			Console.WriteLine(path);
 

@@ -14,17 +14,16 @@ namespace Cauldron
 		static string defaultJson = @"
 			{
 				""modules"": [ ""static"" ],
-				""hosts"": {
-					""port"": 11000,
-					""paths"": {
-						""/"": {
-							""echo"": ""Hello world!""
-						},
-						""/files/+"": {
-							""modules"": {
-								""static"": {
-									""paths"": [ ""content"" ]
-								}
+				""port"": 11000,
+				""paths"": {
+					""/"": {
+						""echo"": ""Hello world!"",
+						""status"": 200
+					},
+					""/files/+"": {
+						""modules"": {
+							""static"": {
+								""paths"": [ ""content"" ]
 							}
 						}
 					}
@@ -34,9 +33,8 @@ namespace Cauldron
 
 		static void Main(string[] args)
 		{
-			//var config = new Config("./config.json", Json.JObject.Parse(defaultJson));
-
-			var server = new Server(11000);
+			var config = new Config("./config.json", Json.JObject.Parse(defaultJson));
+			var server = new Server(config.Get<int>("port"));
 
 			server.Router.AddRoute("/", (req, res, route) =>
 			{
