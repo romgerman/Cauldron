@@ -58,6 +58,7 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Web" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -72,7 +73,7 @@
     <Compile Include="Server\Extensions\Extensions.cs" />
     <Compile Include="Modules\Module.cs" />
     <Compile Include="Server\Extensions\MIME.cs" />
-    <Compile Include="Server\ResponseExtensions.cs" />
+    <Compile Include="Server\Extensions\ResponseExtensions.cs" />
     <Compile Include="Server\Router.cs" />
     <Compile Include="Server\Server.cs" />
     <Compile Include="Modules\StaticContentModule.cs" />

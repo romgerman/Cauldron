@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
+using System.Threading;
 using System.IO;
 
 using Json = Newtonsoft.Json.Linq;
@@ -35,6 +35,7 @@ namespace Cauldron
 		{
 			var config = new Config("./config.json", Json.JObject.Parse(defaultJson));
 			var server = new Server(config.Get<int>("port"));
+			var workingThread = new Thread(() => server.Start());
 
 			server.Router.AddRoute("/", (req, res, route) =>
 			{
@@ -50,9 +51,9 @@ namespace Cauldron
 				res.Send($"Relative path: {r.RelativePath(req.Url.AbsolutePath)}", Encoding.UTF8);
 			});
 
-			server.Router.AddRoute("/files/+", (req, res, r) => new StaticContentModule("/static/").OnResponse(req, res, r));
-			
-			server.Start();
+			server.Router.AddRoute("/files/+", (req, res, r) => new StaticContentModule("static/").OnResponse(req, res, r));
+
+			workingThread.Start();
 			Console.WriteLine("Press any key to shutdown");
 			Console.ReadLine();
 			server.Stop();

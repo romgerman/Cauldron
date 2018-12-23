@@ -1,29 +1,31 @@
 ﻿using System;
 using System.IO;
 using System.Net;
+using System.Web;
 using System.Text;
+using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace Cauldron
 {
 	class StaticContentModule : Module
 	{
+		private List<string> _absolutePaths;
+	
 		string _path;
 		bool _relative;
 
-		public StaticContentModule(string path)
+		public StaticContentModule(string path) // TODO: support array
 		{
-			this._path = path;
-			this._relative = !Path.IsPathRooted(path);
+			_path = path;
+			_relative = !Path.IsPathRooted(path);
 		}
 
 		public override void OnResponse(HttpListenerRequest req, HttpListenerResponse res, Router.Route route)
 		{
 			base.OnResponse(req, res, route);
 			
-			var path = (_relative ? AppDomain.CurrentDomain.BaseDirectory : "") + _path + route.RelativePath(req.Url.AbsolutePath).Replace('/', Path.DirectorySeparatorChar);
-
-			Console.WriteLine(path);
-
+			var path = (_relative ? AppDomain.CurrentDomain.BaseDirectory : "") + _path + HttpUtility.UrlDecode(route.RelativePath(req.Url.AbsolutePath).Replace('/', Path.DirectorySeparatorChar));
 			var attrs = File.GetAttributes(path);
 
 			if (!attrs.HasFlag(FileAttributes.Directory))
@@ -34,39 +36,47 @@ namespace Cauldron
 				MIME.ExtensionToMIME.TryGetValue(extension, out mime);
 
 				res.ContentType = mime;
+				res.StatusCode = 200;
 
-				var buff = new byte[1024];
+				Console.WriteLine($"Sending file \"{path}\"");
 
-				using (var fileStream = File.OpenRead(path))
+				Task.Run(() =>
 				{
-					using (var writer = new BinaryWriter(res.OutputStream))
-					{
-						while (fileStream.Read(buff, 0, buff.Length) > 0)
+					var buff = new byte[2048];
+
+					using (var fileStream = File.OpenRead(path))
+					{					
+						using (var writer = new BinaryWriter(res.OutputStream))
 						{
-							writer.Write(buff, 0, buff.Length);
+							while (fileStream.Read(buff, 0, buff.Length) > 0)
+							{
+								writer.Write(buff, 0, buff.Length);
+							}
 						}
 					}
-				}
+
+					res.End();
+				});
 			}
 			else if (attrs.HasFlag(FileAttributes.Directory))
 			{
 				res.StatusCode = 200;
+				res.ContentEncoding = Encoding.UTF8;
 
 				Console.WriteLine("hey");
 				string[] files = Directory.GetFiles(path);
 				
 				foreach(var file in files)
 				{
-					res.Send($"{Path.GetFileName(file)}\n", Encoding.UTF8);
+					res.WriteString($"{Path.GetFileName(file)}\n", Encoding.UTF8);
 				}
+
+				res.End();
 			}
 			else
 			{
-				if (!File.Exists(path))
-				{
-					res.StatusCode = 404;
-					return;
-				}
+				res.End(404);
+				return;
 			}
 		}
 	}

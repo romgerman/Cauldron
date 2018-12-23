@@ -24,38 +24,34 @@ namespace Cauldron
 		public void Start()
 		{
 			_listener.Start();
+			
+			Console.WriteLine("Web server is running");
 
-			ThreadPool.QueueUserWorkItem((o) =>
+			while(_listener.IsListening)
 			{
-				Console.WriteLine("Web server is running");
-
-				while(_listener.IsListening)
+				ThreadPool.QueueUserWorkItem((obj) =>
 				{
-					ThreadPool.QueueUserWorkItem((obj) =>
+					var ctx = obj as HttpListenerContext;
+
+					try
 					{
-						var ctx = obj as HttpListenerContext;
+						Console.WriteLine($"{ctx.Request.HttpMethod} {ctx.Request.Url.AbsolutePath}");
+					
+						var route = _router.CheckUrl(ctx);
 
-						try
-						{
-							var route = _router.CheckUrl(ctx);
+						if (route != null)
+							route.Callback(ctx.Request, ctx.Response, route);
+						else
+							ctx.Response.End(404);
+					}
+					catch (Exception e)
+					{
+						Console.WriteLine(e.ToString());
+						ctx.Response.End();
+					}
 
-							if (route != null)
-								route.Callback(ctx.Request, ctx.Response, route);
-							else
-								ctx.Response.StatusCode = 404;
-						}
-						catch (Exception e)
-						{
-							Console.WriteLine(e.ToString());
-						}
-						finally
-						{
-							ctx.Response.OutputStream.Close();
-						}
-
-					}, _listener.GetContext());
-				}
-			});
+				}, _listener.GetContext());
+			}
 		}
 		
 		public void Stop()
