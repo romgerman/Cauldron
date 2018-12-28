@@ -8,7 +8,9 @@ namespace Cauldron
 {
 	static class MIME
 	{
-		static public Dictionary<string, string> MIMEtoExtension = new Dictionary<string, string>()
+		public static string OctetStream = "application/octet-stream";
+
+		public static Dictionary<string, string> MIMEtoExtension = new Dictionary<string, string>()
 		{
 			{ "application/json", "json" },
 			{ "application/javascript", "js" },
@@ -62,6 +64,6 @@ namespace Cauldron
 			{ "video/3gpp2", "3gpp2" }
 		};
 
-		static public Dictionary<string, string> ExtensionToMIME = MIMEtoExtension.Reverse().IEnumerableToDictionary();
+		public static Dictionary<string, string> ExtensionToMIME = MIMEtoExtension.Reverse().IEnumerableToDictionary();
 	}
 }

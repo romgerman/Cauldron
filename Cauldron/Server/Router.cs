@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Cauldron
 {
@@ -10,12 +10,20 @@ namespace Cauldron
 	{
 		public delegate void RouteCallback(HttpListenerRequest request, HttpListenerResponse response, Route route);
 
+		public enum Method
+		{
+			GET, POST, PUT, DELETE, HEAD, OPTIONS
+		}
+
 		public class Route
 		{
+			public Method HttpMethod;
 			public string Path;
-			public string[] UrlParts;
+			public Regex Regex;
 			public bool Wildcard;
 			public RouteCallback Callback;
+
+			public string[] UrlParts;			
 
 			public string RelativePath(string url)
 			{			
@@ -29,19 +37,29 @@ namespace Cauldron
 		{
 			_routes = new List<Route>();
 		}
-
-		private bool PathIsFile(string path)
+		
+		public Route MatchRequest(HttpListenerContext ctx)
 		{
-			return path.LastIndexOf('.') > 0;
+			var route = CheckUrl(ctx);
+
+			if (route == null)
+				return null;
+
+			if (!route.HttpMethod.ToString().Equals(ctx.Request.HttpMethod))
+				return null;
+
+			return route;
 		}
 
-		public Route CheckUrl(HttpListenerContext ctx)
-		{		
+		private bool PathIsFile(string path) => (path.LastIndexOf('.') > 0);
+
+		private Route CheckUrl(HttpListenerContext ctx)
+		{
 			var path = ctx.Request.Url.AbsolutePath.Split(new char[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
 
 			foreach (var route in _routes)
 			{
-				var match = CheckRoute(route, path);
+				var match = CheckPath(route, path);
 
 				if (route.Wildcard && !PathIsFile(ctx.Request.Url.AbsolutePath) && !ctx.Request.Url.AbsolutePath.EndsWith("/"))
 					continue;
@@ -55,7 +73,7 @@ namespace Cauldron
 			return null;
 		}
 
-		private bool CheckRoute(Route route, string[] path)
+		private bool CheckPath(Route route, string[] path)
 		{
 			for (int i = 0; i < route.UrlParts.Length; i++)
 			{
@@ -69,8 +87,7 @@ namespace Cauldron
 			return true;
 		}
 
-		// TODO: regex 
-		public void AddRoute(string path, RouteCallback callback)
+		public void AddRoute(string path, RouteCallback callback, Method method = Method.GET)
 		{
 			if (callback == null)
 				throw new ArgumentNullException(nameof(callback));
@@ -81,18 +98,33 @@ namespace Cauldron
 				throw new ArgumentException("Path should end with trailing slash!", nameof(path));
 
 			var parts = path.Split(new char[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
-			var wild = (parts.Length == 0) ? false : parts.Last().StartsWith("+");
+			var end = parts.LastOrDefault();
+			var isWild = end != null && ((parts.Length == 0) ? false : end.EndsWith("+"));
+			var isRegex = end != null && (end[0] == '[' && (end[end.Length - 1] == ']' || end[end.Length - 2] == ']'));
 
-			if (wild) // remove plus sign
+			if (isRegex && isWild)
+				end = end.Remove(end.Length - 1, 1);
+
+			Regex regex = null;
+
+			if (isRegex)
+				regex = new Regex(end, RegexOptions.Compiled);
+
+			if (isWild) // Remove plus sign
 				parts = parts.Take(parts.Length - 1).ToArray();
 
 			_routes.Add(new Route
 			{
 				UrlParts = parts,
 				Callback = callback,
-				Wildcard = wild,
-				Path = path
+				Wildcard = isWild,
+				Path = path,
+				HttpMethod = method,
+				Regex = regex
 			});
 		}
+
+		public void Get(string path, RouteCallback callback) => AddRoute(path, callback, Method.GET);
+		public void Post(string path, RouteCallback callback) => AddRoute(path, callback, Method.POST);
 	}
 }

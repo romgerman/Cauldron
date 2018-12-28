@@ -10,74 +10,108 @@ namespace Cauldron
 {
 	class StaticContentModule : Module
 	{
-		private List<string> _absolutePaths;
-	
-		string _path;
-		bool _relative;
+		public override string Name => "static";
 
-		public StaticContentModule(string path) // TODO: support array
+		List<string> _paths;
+
+		public StaticContentModule(string[] paths)
 		{
-			_path = path;
-			_relative = !Path.IsPathRooted(path);
+			_paths = new List<string>(paths.Length);
+
+			foreach (var path in paths)
+				_paths.Add((Path.IsPathRooted(path) ? AppDomain.CurrentDomain.BaseDirectory : "") + path);
 		}
 
 		public override void OnResponse(HttpListenerRequest req, HttpListenerResponse res, Router.Route route)
 		{
 			base.OnResponse(req, res, route);
-			
-			var path = (_relative ? AppDomain.CurrentDomain.BaseDirectory : "") + _path + HttpUtility.UrlDecode(route.RelativePath(req.Url.AbsolutePath).Replace('/', Path.DirectorySeparatorChar));
-			var attrs = File.GetAttributes(path);
 
-			if (!attrs.HasFlag(FileAttributes.Directory))
+			var filePath = HttpUtility.UrlDecode(route.RelativePath(req.Url.AbsolutePath).Replace('/', Path.DirectorySeparatorChar));
+			string foundFile = null;
+
+			foreach(var path in _paths)
 			{
-				var extension = Path.GetExtension(path);
-				string mime = null;
+				var fullPath = path + filePath;
 
-				MIME.ExtensionToMIME.TryGetValue(extension, out mime);
-
-				res.ContentType = mime;
-				res.StatusCode = 200;
-
-				Console.WriteLine($"Sending file \"{path}\"");
-
-				Task.Run(() =>
+				if (File.Exists(fullPath) || Directory.Exists(fullPath))
 				{
-					var buff = new byte[2048];
-
-					using (var fileStream = File.OpenRead(path))
-					{					
-						using (var writer = new BinaryWriter(res.OutputStream))
-						{
-							while (fileStream.Read(buff, 0, buff.Length) > 0)
-							{
-								writer.Write(buff, 0, buff.Length);
-							}
-						}
-					}
-
-					res.End();
-				});
+					foundFile = fullPath;
+					break;
+				}				
 			}
-			else if (attrs.HasFlag(FileAttributes.Directory))
+
+			if (foundFile == null)
 			{
-				res.StatusCode = 200;
-				res.ContentEncoding = Encoding.UTF8;
+				res.End(404);
+				return;
+			}
 
-				Console.WriteLine("hey");
-				string[] files = Directory.GetFiles(path);
-				
-				foreach(var file in files)
-				{
-					res.WriteString($"{Path.GetFileName(file)}\n", Encoding.UTF8);
-				}
+			var fileAttrs = File.GetAttributes(foundFile);
 
-				res.End();
+			if (!fileAttrs.HasFlag(FileAttributes.Directory))     // Send file
+			{
+				ServeFile(foundFile, res);
+			}
+			else if (fileAttrs.HasFlag(FileAttributes.Directory)) // Send directory
+			{
+				ServeFolder(foundFile, res);
 			}
 			else
 			{
 				res.End(404);
 				return;
 			}
+		}
+
+		private void ServeFile(string path, HttpListenerResponse res)
+		{
+			var extension = Path.GetExtension(path);
+
+			string mime = null;
+			MIME.ExtensionToMIME.TryGetValue(extension, out mime);
+
+			res.ContentType = mime ?? MIME.OctetStream;
+			res.StatusCode = 200;
+
+			Console.WriteLine($"Sending file \"{path}\"");
+
+			Task.Run(() =>
+			{
+				var buff = new byte[2048];
+
+				using (var fileStream = File.OpenRead(path))
+				{
+					using (var writer = new BinaryWriter(res.OutputStream))
+					{
+						while (fileStream.Read(buff, 0, buff.Length) > 0)
+							writer.Write(buff, 0, buff.Length);
+					}
+				}
+
+				res.End();
+			});
+		}
+
+		private void ServeFolder(string path, HttpListenerResponse res)
+		{
+			res.StatusCode = 200;
+			res.ContentEncoding = Encoding.UTF8;
+
+			Console.WriteLine("hey");
+			string[] files = Directory.GetFiles(path);
+			string[] folders = Directory.GetDirectories(path);
+
+			foreach (var file in folders)
+			{
+				res.WriteString($"/{Path.GetFileName(file)}/\n", Encoding.Default);
+			}
+
+			foreach (var file in files)
+			{
+				res.WriteString($"/{Path.GetFileName(file)}\n", Encoding.Default);
+			}
+
+			res.End();
 		}
 	}
 }

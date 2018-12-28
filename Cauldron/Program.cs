@@ -13,7 +13,6 @@ namespace Cauldron
 	{
 		static string defaultJson = @"
 			{
-				""modules"": [ ""static"" ],
 				""port"": 11000,
 				""paths"": {
 					""/"": {
@@ -21,10 +20,8 @@ namespace Cauldron
 						""status"": 200
 					},
 					""/files/+"": {
-						""modules"": {
-							""static"": {
-								""paths"": [ ""content"" ]
-							}
+						""static"": {
+							""paths"": [ ""content"" ]
 						}
 					}
 				}
@@ -33,7 +30,7 @@ namespace Cauldron
 
 		static void Main(string[] args)
 		{
-			var config = new Config("./config.json", Json.JObject.Parse(defaultJson));
+			var config = new Config("./config.json", Json.JObject.Parse(defaultJson)); // TODO
 			var server = new Server(config.Get<int>("port"));
 			var workingThread = new Thread(() => server.Start());
 
@@ -51,7 +48,7 @@ namespace Cauldron
 				res.Send($"Relative path: {r.RelativePath(req.Url.AbsolutePath)}", Encoding.UTF8);
 			});
 
-			server.Router.AddRoute("/files/+", (req, res, r) => new StaticContentModule("static/").OnResponse(req, res, r));
+			server.Router.Get("/files/+", (req, res, r) => new StaticContentModule(new string[] { "static/" }).OnResponse(req, res, r));
 
 			workingThread.Start();
 			Console.WriteLine("Press any key to shutdown");

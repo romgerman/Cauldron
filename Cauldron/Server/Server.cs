@@ -1,7 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Threading;
 using System.Net;
+using System.Threading;
 
 namespace Cauldron
 {
@@ -9,16 +8,15 @@ namespace Cauldron
 	{
 		public delegate void RouteCallback(HttpListenerRequest request, HttpListenerResponse response);
 
-        public Router Router => _router;
+        public Router Router { get; private set; }
 
 		HttpListener _listener;
-        Router _router;
 
 		public Server(int port)
 		{
 			_listener = new HttpListener();
 			_listener.Prefixes.Add($"http://localhost:{port}/");
-            _router = new Router();
+            Router = new Router();
 		}
 
 		public void Start()
@@ -35,14 +33,14 @@ namespace Cauldron
 
 					try
 					{
-						Console.WriteLine($"{ctx.Request.HttpMethod} {ctx.Request.Url.AbsolutePath}");
-					
-						var route = _router.CheckUrl(ctx);
+						var route = Router.MatchRequest(ctx);
 
 						if (route != null)
 							route.Callback(ctx.Request, ctx.Response, route);
 						else
 							ctx.Response.End(404);
+
+						Console.WriteLine($"{ctx.Request.HttpMethod} {ctx.Request.Url.AbsolutePath} - {ctx.Response.StatusCode}");
 					}
 					catch (Exception e)
 					{
